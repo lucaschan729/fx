@@ -1,0 +1,100 @@
+name: 更新匯率
+on:
+  schedule:
+    - cron: '7,37 0-11 * * 1-6'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 讀取友邦匯率
+        run: |
+          python3 - <<'EOF'
+          import json, re, sys, subprocess, urllib.request, html, datetime, os
+          URL = 'https://www.aia.com.hk/zh-hk/help-and-support/individuals/exchange-rates.html'
+          UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
+          CUR = {'美元':'USD','澳元':'AUD','人民幣':'CNY','加拿大元':'CAD','瑞士法郎':'CHF','英鎊':'GBP','披索':'PHP','澳門幣':'MOP','新台幣':'TWD','新加坡元':'SGD','紐西蘭元':'NZD','歐羅':'EUR','日圓':'JPY'}
+
+          def parse(text):
+              text = re.sub(r'(?is)<(script|style)[^>]*>.*?</\1>', ' ', text)
+              text = re.sub(r'<[^>]+>', ' ', text)
+              text = re.sub(r'\s+', ' ', html.unescape(text))
+              i = text.find('外幣與港元兌換價')
+              if i < 0:
+                  return None
+              seg = text[i:i + 3000]
+              j = seg.find('以上外幣匯率')
+              if j > 0:
+                  seg = seg[:j]
+              m = re.search(r'日期\s*[:：]\s*(\d{1,2})/(\d{1,2})/(\d{4})', seg)
+              if not m:
+                  return None
+              mm, dd, yy = int(m.group(1)), int(m.group(2)), m.group(3)
+              if mm > 12:
+                  mm, dd = dd, mm
+              rates = {}
+              for name, code in CUR.items():
+                  r = re.search(re.escape(name) + r'\s*(\d+(?:\.\d+)?)', seg)
+                  if r and float(r.group(1)) > 0:
+                      rates[code] = float(r.group(1))
+              if not (7 < rates.get('USD', 0) < 9) or len(rates) < 5:
+                  return None
+              return {'date': '%s-%02d-%02d' % (yy, mm, dd), 'rates': rates}
+
+          def plain():
+              req = urllib.request.Request(URL, headers={'User-Agent': UA, 'Accept-Language': 'zh-HK,zh;q=0.9'})
+              return urllib.request.urlopen(req, timeout=40).read().decode('utf-8', 'ignore')
+
+          def browser():
+              subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'playwright'], check=True)
+              subprocess.run([sys.executable, '-m', 'playwright', 'install', '--with-deps', 'chromium'], check=True)
+              from playwright.sync_api import sync_playwright
+              with sync_playwright() as p:
+                  b = p.chromium.launch()
+                  pg = b.new_page(user_agent=UA, locale='zh-HK')
+                  pg.goto(URL, wait_until='domcontentloaded', timeout=60000)
+                  pg.wait_for_timeout(10000)
+                  t = pg.inner_text('body')
+                  b.close()
+                  return t
+
+          data, raw = None, ''
+          try:
+              raw = plain()
+              data = parse(raw)
+          except Exception as e:
+              print('直接讀取失敗：', e)
+          if not data:
+              print('改用瀏覽器方式讀取')
+              try:
+                  raw = browser()
+                  data = parse(raw)
+              except Exception as e:
+                  print('瀏覽器讀取失敗：', e)
+          if not data:
+              print('未能讀到匯率。頁面開頭：', raw[:500])
+              sys.exit(1)
+
+          old = {}
+          if os.path.exists('rates.json'):
+              try:
+                  old = json.load(open('rates.json', encoding='utf-8'))
+              except Exception:
+                  pass
+          if old.get('date') == data['date'] and old.get('rates') == data['rates']:
+              print('匯率沒有變動：', data['date'])
+          else:
+              hk = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
+              data['updated'] = hk.strftime('%Y-%m-%d %H:%M')
+              json.dump(data, open('rates.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+              print('已更新：', data)
+          EOF
+      - name: 儲存
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add rates.json
+          git diff --cached --quiet || (git commit -m "更新匯率" && git push)
