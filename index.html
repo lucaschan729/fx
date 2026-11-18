@@ -1,0 +1,153 @@
+  <!DOCTYPE html>
+  <html lang="zh-HK">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>保費匯率計算器</title>
+  <style>
+  :root{--navy:#0f172a;--gold:#d97706;--gold2:#f59e0b;--soft:#fffbeb;--line:#cbd5e1;--mut:#64748b;--bg:#f1f5f9;--red:#dc2626}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--navy);-webkit-font-smoothing:antialiased}
+  header{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:32px 20px 60px}
+  .hd{max-width:720px;margin:0 auto}
+  header h1{margin:0 0 6px;font-size:26px}
+  header p{margin:0;color:#cbd5e1;font-size:13px}
+  main{max-width:720px;margin:-40px auto 0;padding:0 14px 40px}
+  section{background:#fff;border-radius:18px;padding:20px;margin-bottom:18px;box-shadow:0 4px 16px rgba(15,23,42,.06)}
+  h2{margin:0 0 14px;font-size:18px;border-left:4px solid var(--gold2);padding-left:10px}
+  .badge{display:inline-block;background:var(--soft);border:1px solid var(--gold2);color:var(--gold);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700}
+  .warn{font-size:13px;color:var(--red);margin-top:8px;line-height:1.6}
+  .hide{display:none!important}
+  label.f{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
+  input[type=text],select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:17px;font-family:inherit;background:#fff;color:var(--navy)}
+  #amt{font-size:24px;font-weight:700}
+  .swap{display:block;margin:12px auto 0;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 16px;font-size:14px;cursor:pointer;color:var(--navy)}
+  .res{background:var(--soft);border:1px solid var(--gold2);border-radius:14px;padding:16px;margin-top:16px;text-align:center}
+  .res small{display:block;color:var(--mut);font-size:13px}
+  .res b{display:block;font-size:32px;color:var(--gold);margin:4px 0;word-break:break-all}
+  .btn{border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer}
+  .btn.sec{background:#fff;color:var(--navy);border-color:var(--line)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+  table{border-collapse:collapse;width:100%;font-size:14px;white-space:nowrap}
+  th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line)}
+  th{background:var(--navy);color:#fff;font-size:13px}
+  th:first-child,td:first-child{text-align:left}
+  tbody tr{cursor:pointer}
+  tr.on td{background:var(--soft);font-weight:700;color:var(--gold)}
+  td small{color:var(--mut)}
+  .note{font-size:12px;color:var(--mut);margin-top:10px;line-height:1.7}
+  .mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
+  .mg label{font-size:12px;color:var(--mut)}
+  .mg input{font-size:14px;padding:7px 9px}
+  summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--mut)}
+  </style>
+  </head>
+  <body>
+  <header><div class="hd"><h1>保費匯率計算器</h1><p>按友邦香港公佈的外幣兌港元匯價，計算以不同貨幣繳付保費所需的金額。</p></div></header>
+  <main>
+  <section>
+    <span class="badge" id="date">匯率載入中…</span>
+    <div class="warn hide" id="warn"></div>
+    <label class="f">保費金額</label>
+    <input type="text" id="amt" inputmode="decimal" placeholder="例如 10,000">
+    <label class="f">保單貨幣（輸入金額的貨幣）</label>
+    <select id="from"></select>
+    <button class="swap" id="swap">⇅ 對調</button>
+    <label class="f">繳付貨幣</label>
+    <select id="to"></select>
+    <div class="res"><small id="rl">所需金額</small><b id="out">—</b><small id="rt"></small></div>
+    <div class="row"><button class="btn" id="copy">複製結果</button></div>
+  </section>
+
+  <section>
+    <h2>全部貨幣</h2>
+    <div class="tw"><table><thead><tr><th>貨幣</th><th>兌港元匯價</th><th>所需金額</th></tr></thead><tbody id="tb"></tbody></table></div>
+    <div class="note">點擊任何一行可設為繳付貨幣。</div>
+  </section>
+
+  <section>
+    <details><summary>手動輸入匯率（自動更新失敗時使用）</summary>
+      <div class="mg" id="mg"></div>
+      <div class="row"><button class="btn" id="mApply">套用手動匯率</button><button class="btn sec" id="mReset">回復自動匯率</button></div>
+    </details>
+  </section>
+
+  <div class="note">
+  * 匯率只供參考，繳付保費適用的匯率按友邦香港收訖款項的時間釐定。<br>
+  * 非港元之間的換算（例如美元兌人民幣）是經港元匯價推算，公司實際做法可能不同。<br>
+  * 金額四捨五入至小數後兩位，與公司實際金額可能有輕微出入。未包括保費徵費。<br>
+  * 匯率來源：<a href="https://www.aia.com.hk/zh-hk/help-and-support/individuals/exchange-rates.html" target="_blank" rel="noopener">友邦香港兌換率</a>
+  </div>
+  </main>
+
+  <script>
+  const $=id=>document.getElementById(id);
+  const CUR=[['HKD','港元'],['USD','美元'],['CNY','人民幣'],['AUD','澳元'],['CAD','加拿大元'],['CHF','瑞士法郎'],['GBP','英鎊'],['EUR','歐羅'],['JPY','日圓'],['SGD','新加坡元'],['NZD','紐西蘭元'],['MOP','澳門幣'],['TWD','新台幣'],['PHP','披索']];
+  const NAME=Object.fromEntries(CUR);
+  /* 內置匯率：rates.json 未能載入時使用 */
+  const FALLBACK={date:'2026-11-18',rates:{USD:7.8505,AUD:5.2819,CNY:1.1802,CAD:5.4840,CHF:9.3398,GBP:10.3468,PHP:0.1232,MOP:0.9709,TWD:0.2381,SGD:6.0866,NZD:4.3094,EUR:8.6277,JPY:0.0492}};
+  let D=FALLBACK,src='內置';
+  const rate=c=>c==='HKD'?1:D.rates[c];
+  const fmt=n=>n==null||!isFinite(n)?'—':n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const r4=n=>n==null||!isFinite(n)?'—':n.toFixed(4);
+  const amt=()=>{const v=parseFloat($('amt').value.replace(/[,\s]/g,''));return isFinite(v)&&v>0?v:null;};
+  const conv=(a,f,t)=>a==null||!rate(f)||!rate(t)?null:a*rate(f)/rate(t);
+  const today=()=>{try{return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Hong_Kong'});}catch(e){return'';}};
+  function pairText(f,t){
+    if(f===t)return'';
+    if(t==='HKD')return`1 ${NAME[f]} = ${r4(rate(f))} 港元`;
+    if(f==='HKD')return`1 ${NAME[t]} = ${r4(rate(t))} 港元`;
+    return`1 ${NAME[f]} = ${r4(rate(f)/rate(t))} ${NAME[t]}（經港元換算）`;
+  }
+  function opts(sel,v){sel.innerHTML=CUR.filter(c=>c[0]==='HKD'||D.rates[c[0]]).map(c=>`<option value="${c[0]}"${c[0]===v?' selected':''}>${c[1]} ${c[0]}</option>`).join('');}
+  function render(){
+    const f=$('from').value,t=$('to').value,a=amt();
+    $('date').textContent='友邦匯率日期：'+D.date+'（'+src+'）';
+    const w=[];
+    if(src==='內置')w.push('未能載入自動更新的匯率，現時使用內置匯率，請與友邦網站核對或手動輸入。');
+    if(src==='手動')w.push('現時使用手動輸入的匯率。');
+    const td=today();
+    if(src!=='手動'&&td&&D.date!==td)w.push('匯率日期不是今天。週末、假期或友邦尚未更新時屬正常，否則請到友邦網站核對。');
+    $('warn').textContent=w.join('\n');$('warn').classList.toggle('hide',!w.length);
+    $('rl').textContent=a==null?'所需金額':`${NAME[f]} ${fmt(a)} 折合`;
+    $('out').textContent=a==null?'—':NAME[t]+' '+fmt(conv(a,f,t));
+    $('rt').textContent=pairText(f,t);
+    $('tb').innerHTML=CUR.filter(c=>c[0]!==f&&rate(c[0])).map(c=>`<tr data-c="${c[0]}" class="${c[0]===t?'on':''}"><td>${c[1]} <small>${c[0]}</small></td><td>${c[0]==='HKD'?'—':r4(rate(c[0]))}</td><td>${fmt(conv(a,f,c[0]))}</td></tr>`).join('');
+  }
+  function manualBox(){
+    $('mg').innerHTML=`<div><label>匯率日期</label><input type="text" id="mDate" value="${D.date}"></div>`+
+      CUR.filter(c=>c[0]!=='HKD').map(c=>`<div><label>${c[1]} ${c[0]}</label><input type="text" inputmode="decimal" data-c="${c[0]}" value="${D.rates[c[0]]||''}"></div>`).join('');
+  }
+  function setData(d,s){
+    D=d;src=s;const f=$('from').value||'USD',t=$('to').value||'HKD';
+    opts($('from'),f);opts($('to'),t);manualBox();render();
+  }
+  async function load(){
+    try{
+      const r=await fetch('rates.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw 0;
+      const d=await r.json();if(!d.date||!d.rates||!d.rates.USD)throw 0;
+      setData(d,'自動更新');
+    }catch(e){setData(FALLBACK,'內置');}
+  }
+  $('amt').addEventListener('input',render);
+  $('amt').addEventListener('blur',()=>{const a=amt();if(a!=null)$('amt').value=a.toLocaleString('en-US',{maximumFractionDigits:2});});
+  $('from').onchange=()=>{if($('from').value===$('to').value)$('to').value=$('from').value==='HKD'?'USD':'HKD';render();};
+  $('to').onchange=render;
+  $('swap').onclick=()=>{const f=$('from').value;$('from').value=$('to').value;$('to').value=f;render();};
+  $('tb').addEventListener('click',e=>{const tr=e.target.closest('tr[data-c]');if(tr){$('to').value=tr.dataset.c;render();}});
+  $('copy').onclick=()=>{
+    const f=$('from').value,t=$('to').value,a=amt();if(a==null){alert('請先輸入金額。');return;}
+    const s=`保費 ${NAME[f]} ${fmt(a)} ＝ ${NAME[t]} ${fmt(conv(a,f,t))}\n友邦匯率（${D.date}）：${pairText(f,t)}\n*匯率只供參考，實際以友邦香港收訖款項時的匯率為準。`;
+    (navigator.clipboard?navigator.clipboard.writeText(s):Promise.reject()).then(()=>alert('已複製')).catch(()=>prompt('請手動複製：',s));
+  };
+  $('mApply').onclick=()=>{
+    const rates={};$('mg').querySelectorAll('input[data-c]').forEach(i=>{const v=parseFloat(i.value);if(isFinite(v)&&v>0)rates[i.dataset.c]=v;});
+    if(!Object.keys(rates).length){alert('請輸入最少一個匯率。');return;}
+    setData({date:$('mDate').value||'手動',rates},'手動');
+  };
+  $('mReset').onclick=load;
+  opts($('from'),'USD');opts($('to'),'HKD');load();
+  </script>
+  </body>
+  </html>
