@@ -1,153 +1,297 @@
   <!DOCTYPE html>
-  <html lang="zh-HK">
+  <html lang="zh-Hant-HK">
   <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>保費匯率計算器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AIA 保費匯率計算器</title>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script>
   <style>
-  :root{--navy:#0f172a;--gold:#d97706;--gold2:#f59e0b;--soft:#fffbeb;--line:#cbd5e1;--mut:#64748b;--bg:#f1f5f9;--red:#dc2626}
   *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,"PingFang HK","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--navy);-webkit-font-smoothing:antialiased}
-  header{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:32px 20px 60px}
-  .hd{max-width:720px;margin:0 auto}
-  header h1{margin:0 0 6px;font-size:26px}
-  header p{margin:0;color:#cbd5e1;font-size:13px}
-  main{max-width:720px;margin:-40px auto 0;padding:0 14px 40px}
-  section{background:#fff;border-radius:18px;padding:20px;margin-bottom:18px;box-shadow:0 4px 16px rgba(15,23,42,.06)}
-  h2{margin:0 0 14px;font-size:18px;border-left:4px solid var(--gold2);padding-left:10px}
-  .badge{display:inline-block;background:var(--soft);border:1px solid var(--gold2);color:var(--gold);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700}
-  .warn{font-size:13px;color:var(--red);margin-top:8px;line-height:1.6}
-  .hide{display:none!important}
-  label.f{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
-  input[type=text],select{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:17px;font-family:inherit;background:#fff;color:var(--navy)}
-  #amt{font-size:24px;font-weight:700}
-  .swap{display:block;margin:12px auto 0;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 16px;font-size:14px;cursor:pointer;color:var(--navy)}
-  .res{background:var(--soft);border:1px solid var(--gold2);border-radius:14px;padding:16px;margin-top:16px;text-align:center}
-  .res small{display:block;color:var(--mut);font-size:13px}
-  .res b{display:block;font-size:32px;color:var(--gold);margin:4px 0;word-break:break-all}
-  .btn{border:1px solid var(--navy);background:var(--navy);color:#fff;border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer}
-  .btn.sec{background:#fff;color:var(--navy);border-color:var(--line)}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
-  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
-  table{border-collapse:collapse;width:100%;font-size:14px;white-space:nowrap}
-  th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line)}
-  th{background:var(--navy);color:#fff;font-size:13px}
-  th:first-child,td:first-child{text-align:left}
-  tbody tr{cursor:pointer}
-  tr.on td{background:var(--soft);font-weight:700;color:var(--gold)}
-  td small{color:var(--mut)}
-  .note{font-size:12px;color:var(--mut);margin-top:10px;line-height:1.7}
-  .mg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
-  .mg label{font-size:12px;color:var(--mut)}
-  .mg input{font-size:14px;padding:7px 9px}
-  summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--mut)}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang HK","Microsoft JhengHei",sans-serif;background:#f2f5f9;color:#1c2b3a;line-height:1.5}
+  header{background:linear-gradient(135deg,#1f3a5f,#2f5d8f);color:#fff;padding:22px 16px 18px;text-align:center}
+  header h1{margin:0;font-size:22px;letter-spacing:1px}
+  #status{margin-top:6px;font-size:13px;opacity:.9}
+  main{max-width:640px;margin:0 auto;padding:14px}
+  .card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(31,58,95,.08)}
+  .warn{background:#fff4d6;border:1px solid #e6b422;color:#7a5600;border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:14px;display:none}
+  label{display:block;font-size:13px;color:#5b6b7c;margin-bottom:4px}
+  select,input{width:100%;font-size:17px;padding:11px 12px;border:1px solid #cfd8e3;border-radius:10px;background:#fff;color:#1c2b3a}
+  .swap{display:flex;justify-content:center;margin:8px 0}
+  .swap button{width:44px;height:44px;border-radius:50%;border:none;background:#1f3a5f;color:#fff;font-size:20px}
+  .result{margin-top:14px;background:#fbf3dc;border:1px solid #e6c766;border-radius:14px;padding:14px;text-align:center}
+  .result .small{font-size:13px;color:#7a6a3a}
+  .result .big{font-size:28px;font-weight:700;color:#1f3a5f;margin:4px 0;word-break:break-all}
+  .btns{display:flex;gap:10px;margin-top:12px}
+  .btns button{flex:1;padding:13px 8px;font-size:15px;border:none;border-radius:12px;font-weight:600}
+  .b1{background:#1f3a5f;color:#fff}
+  .b2{background:#c9a227;color:#fff}
+  h2{font-size:16px;margin:0 0 10px;color:#1f3a5f}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td{padding:10px 6px;border-bottom:1px solid #edf1f6}
+  td.f{font-size:24px;width:40px;text-align:center}
+  td.a{text-align:right;font-weight:600;white-space:nowrap}
+  td .code{font-size:12px;color:#7b8a9a}
+  tr.sel{background:#fbf3dc}
+  tr.pol{color:#9aa7b5}
+  tr.pol td.a{font-weight:400}
+  details summary{font-weight:600;color:#1f3a5f;cursor:pointer}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .grid input{font-size:15px;padding:8px 10px}
+  .link{background:none;border:none;color:#2f5d8f;font-size:14px;margin-top:10px;padding:0;text-decoration:underline}
+  .note{font-size:12px;color:#6b7b8c}
+  .note li{margin-bottom:4px}
+  #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#1c2b3a;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none}
   </style>
   </head>
   <body>
-  <header><div class="hd"><h1>保費匯率計算器</h1><p>按友邦香港公佈的外幣兌港元匯價，計算以不同貨幣繳付保費所需的金額。</p></div></header>
+  <header>
+    <h1>AIA 保費匯率計算器</h1>
+    <div id="status">載入匯率中…</div>
+  </header>
   <main>
-  <section>
-    <span class="badge" id="date">匯率載入中…</span>
-    <div class="warn hide" id="warn"></div>
-    <label class="f">保費金額</label>
-    <input type="text" id="amt" inputmode="decimal" placeholder="例如 10,000">
-    <label class="f">保單貨幣（輸入金額的貨幣）</label>
-    <select id="from"></select>
-    <button class="swap" id="swap">⇅ 對調</button>
-    <label class="f">繳付貨幣</label>
-    <select id="to"></select>
-    <div class="res"><small id="rl">所需金額</small><b id="out">—</b><small id="rt"></small></div>
-    <div class="row"><button class="btn" id="copy">複製結果</button></div>
-  </section>
-
-  <section>
-    <h2>全部貨幣</h2>
-    <div class="tw"><table><thead><tr><th>貨幣</th><th>兌港元匯價</th><th>所需金額</th></tr></thead><tbody id="tb"></tbody></table></div>
-    <div class="note">點擊任何一行可設為繳付貨幣。</div>
-  </section>
-
-  <section>
-    <details><summary>手動輸入匯率（自動更新失敗時使用）</summary>
-      <div class="mg" id="mg"></div>
-      <div class="row"><button class="btn" id="mApply">套用手動匯率</button><button class="btn sec" id="mReset">回復自動匯率</button></div>
-    </details>
-  </section>
-
-  <div class="note">
-  * 匯率只供參考，繳付保費適用的匯率按友邦香港收訖款項的時間釐定。<br>
-  * 非港元之間的換算（例如美元兌人民幣）是經港元匯價推算，公司實際做法可能不同。<br>
-  * 金額四捨五入至小數後兩位，與公司實際金額可能有輕微出入。未包括保費徵費。<br>
-  * 匯率來源：<a href="https://www.aia.com.hk/zh-hk/help-and-support/individuals/exchange-rates.html" target="_blank" rel="noopener">友邦香港兌換率</a>
-  </div>
+    <div class="warn" id="warn"></div>
+    <div class="card">
+      <label>保單貨幣</label>
+      <select id="pol"></select>
+      <div class="swap"><button id="swap" aria-label="對調">⇅</button></div>
+      <label>繳付貨幣</label>
+      <select id="pay"></select>
+      <label style="margin-top:12px">保單貨幣金額</label>
+      <input id="amt" type="text" inputmode="decimal" value="10,000">
+      <div class="result">
+        <div class="small" id="rTop"></div>
+        <div class="big" id="rBig"></div>
+        <div class="small" id="rRate"></div>
+      </div>
+      <div class="btns">
+        <button class="b1" id="copy">複製結果</button>
+        <button class="b2" id="xlsx">匯出 Excel 給客戶</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>各繳付貨幣應繳金額</h2>
+      <table id="tbl"></table>
+      <div class="note" style="margin-top:8px">點選任何一行可設為繳付貨幣。</div>
+    </div>
+    <div class="card">
+      <details>
+        <summary>手動輸入匯率（1 外幣兌港元）</summary>
+        <div class="grid" id="manual"></div>
+        <button class="link" id="reset">還原為自動匯率</button>
+      </details>
+    </div>
+    <div class="card note">
+      <ul style="margin:0;padding-left:18px">
+        <li>匯率來自友邦香港網站公佈的外幣與港元兌換價，僅供參考。</li>
+        <li>實際匯率以友邦收訖款項當日為準。</li>
+        <li>非港元貨幣之間的金額，經港元匯率交叉計算。</li>
+        <li>金額不包括保費徵費。</li>
+      </ul>
+    </div>
   </main>
-
+  <div id="toast"></div>
   <script>
-  const $=id=>document.getElementById(id);
-  const CUR=[['HKD','港元'],['USD','美元'],['CNY','人民幣'],['AUD','澳元'],['CAD','加拿大元'],['CHF','瑞士法郎'],['GBP','英鎊'],['EUR','歐羅'],['JPY','日圓'],['SGD','新加坡元'],['NZD','紐西蘭元'],['MOP','澳門幣'],['TWD','新台幣'],['PHP','披索']];
-  const NAME=Object.fromEntries(CUR);
-  /* 內置匯率：rates.json 未能載入時使用 */
-  const FALLBACK={date:'2026-11-18',rates:{USD:7.8505,AUD:5.2819,CNY:1.1802,CAD:5.4840,CHF:9.3398,GBP:10.3468,PHP:0.1232,MOP:0.9709,TWD:0.2381,SGD:6.0866,NZD:4.3094,EUR:8.6277,JPY:0.0492}};
-  let D=FALLBACK,src='內置';
-  const rate=c=>c==='HKD'?1:D.rates[c];
-  const fmt=n=>n==null||!isFinite(n)?'—':n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const r4=n=>n==null||!isFinite(n)?'—':n.toFixed(4);
-  const amt=()=>{const v=parseFloat($('amt').value.replace(/[,\s]/g,''));return isFinite(v)&&v>0?v:null;};
-  const conv=(a,f,t)=>a==null||!rate(f)||!rate(t)?null:a*rate(f)/rate(t);
-  const today=()=>{try{return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Hong_Kong'});}catch(e){return'';}};
-  function pairText(f,t){
-    if(f===t)return'';
-    if(t==='HKD')return`1 ${NAME[f]} = ${r4(rate(f))} 港元`;
-    if(f==='HKD')return`1 ${NAME[t]} = ${r4(rate(t))} 港元`;
-    return`1 ${NAME[f]} = ${r4(rate(f)/rate(t))} ${NAME[t]}（經港元換算）`;
+  const CUR = [
+    {c:'HKD',n:'港元',s:'HK$',f:'🇭🇰'},
+    {c:'USD',n:'美元',s:'US$',f:'🇺🇸'},
+    {c:'CNY',n:'人民幣',s:'CN¥',f:'🇨🇳'},
+    {c:'MOP',n:'澳門幣',s:'MOP$',f:'🇲🇴'},
+    {c:'GBP',n:'英鎊',s:'£',f:'🇬🇧'},
+    {c:'EUR',n:'歐羅',s:'€',f:'🇪🇺'},
+    {c:'AUD',n:'澳元',s:'A$',f:'🇦🇺'},
+    {c:'NZD',n:'紐西蘭元',s:'NZ$',f:'🇳🇿'},
+    {c:'CAD',n:'加拿大元',s:'C$',f:'🇨🇦'},
+    {c:'SGD',n:'新加坡元',s:'S$',f:'🇸🇬'},
+    {c:'CHF',n:'瑞士法郎',s:'CHF',f:'🇨🇭'},
+    {c:'JPY',n:'日圓',s:'JP¥',f:'🇯🇵'},
+    {c:'TWD',n:'新台幣',s:'NT$',f:'🇹🇼'},
+    {c:'PHP',n:'菲律賓披索',s:'₱',f:'🇵🇭'}
+  ];
+  const BUILTIN = {date:'2026-11-18', rates:{USD:7.8505,AUD:5.2819,CNY:1.1802,CAD:5.484,CHF:9.3398,GBP:10.3468,PHP:0.1232,MOP:0.9709,TWD:0.2381,SGD:6.0866,NZD:4.3094,EUR:8.6277,JPY:0.0492}};
+  let S = {date:'', rates:{}, source:'', updated:''};
+  const $ = id => document.getElementById(id);
+  const info = c => CUR.find(x => x.c === c);
+  const avail = () => CUR.filter(x => S.rates[x.c] > 0);
+  const fmt = (n, d) => n.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+  const money = (c, n) => info(c).s + ' ' + fmt(n, 2);
+  const conv = (a, p, q) => a * S.rates[p] / S.rates[q];
+  const hkToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const amount = () => { const v = parseFloat($('amt').value.replace(/,/g, '')); return v > 0 ? v : 0; };
+
+  function toast(t){ const e = $('toast'); e.textContent = t; e.style.opacity = 1; setTimeout(() => e.style.opacity = 0, 2200); }
+
+  function setRates(d, source){
+    S = {date:d.date, rates:Object.assign({}, d.rates, {HKD:1}), source:source, updated:d.updated || ''};
   }
-  function opts(sel,v){sel.innerHTML=CUR.filter(c=>c[0]==='HKD'||D.rates[c[0]]).map(c=>`<option value="${c[0]}"${c[0]===v?' selected':''}>${c[1]} ${c[0]}</option>`).join('');}
-  function render(){
-    const f=$('from').value,t=$('to').value,a=amt();
-    $('date').textContent='友邦匯率日期：'+D.date+'（'+src+'）';
-    const w=[];
-    if(src==='內置')w.push('未能載入自動更新的匯率，現時使用內置匯率，請與友邦網站核對或手動輸入。');
-    if(src==='手動')w.push('現時使用手動輸入的匯率。');
-    const td=today();
-    if(src!=='手動'&&td&&D.date!==td)w.push('匯率日期不是今天。週末、假期或友邦尚未更新時屬正常，否則請到友邦網站核對。');
-    $('warn').textContent=w.join('\n');$('warn').classList.toggle('hide',!w.length);
-    $('rl').textContent=a==null?'所需金額':`${NAME[f]} ${fmt(a)} 折合`;
-    $('out').textContent=a==null?'—':NAME[t]+' '+fmt(conv(a,f,t));
-    $('rt').textContent=pairText(f,t);
-    $('tb').innerHTML=CUR.filter(c=>c[0]!==f&&rate(c[0])).map(c=>`<tr data-c="${c[0]}" class="${c[0]===t?'on':''}"><td>${c[1]} <small>${c[0]}</small></td><td>${c[0]==='HKD'?'—':r4(rate(c[0]))}</td><td>${fmt(conv(a,f,c[0]))}</td></tr>`).join('');
-  }
-  function manualBox(){
-    $('mg').innerHTML=`<div><label>匯率日期</label><input type="text" id="mDate" value="${D.date}"></div>`+
-      CUR.filter(c=>c[0]!=='HKD').map(c=>`<div><label>${c[1]} ${c[0]}</label><input type="text" inputmode="decimal" data-c="${c[0]}" value="${D.rates[c[0]]||''}"></div>`).join('');
-  }
-  function setData(d,s){
-    D=d;src=s;const f=$('from').value||'USD',t=$('to').value||'HKD';
-    opts($('from'),f);opts($('to'),t);manualBox();render();
-  }
+
   async function load(){
-    try{
-      const r=await fetch('rates.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw 0;
-      const d=await r.json();if(!d.date||!d.rates||!d.rates.USD)throw 0;
-      setData(d,'自動更新');
-    }catch(e){setData(FALLBACK,'內置');}
+    try {
+      const r = await fetch('rates.json?t=' + Date.now(), {cache:'no-store'});
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      if (!(j.rates && j.rates.USD > 7 && j.rates.USD < 9)) throw new Error('bad');
+      setRates(j, '自動更新');
+    } catch (e) {
+      setRates(BUILTIN, '內置');
+    }
+    build();
   }
-  $('amt').addEventListener('input',render);
-  $('amt').addEventListener('blur',()=>{const a=amt();if(a!=null)$('amt').value=a.toLocaleString('en-US',{maximumFractionDigits:2});});
-  $('from').onchange=()=>{if($('from').value===$('to').value)$('to').value=$('from').value==='HKD'?'USD':'HKD';render();};
-  $('to').onchange=render;
-  $('swap').onclick=()=>{const f=$('from').value;$('from').value=$('to').value;$('to').value=f;render();};
-  $('tb').addEventListener('click',e=>{const tr=e.target.closest('tr[data-c]');if(tr){$('to').value=tr.dataset.c;render();}});
-  $('copy').onclick=()=>{
-    const f=$('from').value,t=$('to').value,a=amt();if(a==null){alert('請先輸入金額。');return;}
-    const s=`保費 ${NAME[f]} ${fmt(a)} ＝ ${NAME[t]} ${fmt(conv(a,f,t))}\n友邦匯率（${D.date}）：${pairText(f,t)}\n*匯率只供參考，實際以友邦香港收訖款項時的匯率為準。`;
-    (navigator.clipboard?navigator.clipboard.writeText(s):Promise.reject()).then(()=>alert('已複製')).catch(()=>prompt('請手動複製：',s));
-  };
-  $('mApply').onclick=()=>{
-    const rates={};$('mg').querySelectorAll('input[data-c]').forEach(i=>{const v=parseFloat(i.value);if(isFinite(v)&&v>0)rates[i.dataset.c]=v;});
-    if(!Object.keys(rates).length){alert('請輸入最少一個匯率。');return;}
-    setData({date:$('mDate').value||'手動',rates},'手動');
-  };
-  $('mReset').onclick=load;
-  opts($('from'),'USD');opts($('to'),'HKD');load();
+
+  function build(){
+    const keepP = $('pol').value || 'USD', keepQ = $('pay').value || 'HKD';
+    const opts = avail().map(x => '<option value="' + x.c + '">' + x.f + ' ' + x.n + ' ' + x.c + '（' + x.s + '）</option>').join('');
+    $('pol').innerHTML = opts; $('pay').innerHTML = opts;
+    $('pol').value = S.rates[keepP] ? keepP : 'USD';
+    $('pay').value = S.rates[keepQ] ? keepQ : 'HKD';
+    $('manual').innerHTML = CUR.filter(x => x.c !== 'HKD').map(x =>
+      '<div><label>' + x.f + ' ' + x.n + ' ' + x.c + '</label><input type="text" inputmode="decimal" data-c="' + x.c + '" value="' + (S.rates[x.c] || '') + '"></div>').join('');
+    render();
+  }
+
+  function render(){
+    const p = $('pol').value, q = $('pay').value, a = amount();
+    $('status').textContent = '友邦匯率日期：' + S.date + '（' + S.source + '）' + (S.updated && S.source === '自動更新' ? '　更新於 ' + S.updated.slice(11) : '');
+    const w = $('warn'), msgs = [];
+    if (S.source === '手動') msgs.push('⚠️ 正在使用手動輸入的匯率，請核對後才發給客戶。');
+    else if (S.date !== hkToday()) msgs.push('⚠️ 匯率日期（' + S.date + '）不是今天，友邦可能尚未公佈今天匯率，或自動更新未完成。');
+    w.style.display = msgs.length ? 'block' : 'none'; w.textContent = msgs.join(' ');
+    const P = info(p), Q = info(q), out = conv(a, p, q);
+    $('rTop').textContent = P.f + ' ' + P.n + ' ' + money(p, a) + ' 　→　 ' + Q.f + ' ' + Q.n;
+    $('rBig').textContent = money(q, out);
+    $('rRate').textContent = '1 ' + P.n + ' = ' + fmt(conv(1, p, q), 4) + ' ' + Q.n + (p !== 'HKD' && q !== 'HKD' && p !== q ? '（交叉計算，僅供參考）' : '');
+    $('tbl').innerHTML = avail().map(x =>
+      '<tr data-c="' + x.c + '" class="' + (x.c === q ? 'sel' : '') + (x.c === p ? ' pol' : '') + '"><td class="f">' + x.f + '</td><td>' + x.n +
+      (x.c === p ? '（保單貨幣）' : '') + '<div class="code">' + x.c + '</div></td><td class="a">' + money(x.c, conv(a, p, x.c)) + '</td></tr>').join('');
+  }
+
+  function copyText(){
+    const p = $('pol').value, q = $('pay').value, a = amount(), P = info(p), Q = info(q);
+    const lines = [
+      '保單貨幣金額：' + P.f + ' ' + P.n + ' ' + money(p, a),
+      '繳付貨幣金額：' + Q.f + ' ' + Q.n + ' ' + money(q, conv(a, p, q)),
+      '匯率：1 ' + P.n + ' = ' + fmt(conv(1, p, q), 4) + ' ' + Q.n,
+      '匯率日期：' + S.date + '（友邦香港' + (S.source === '手動' ? '，手動輸入' : '') + '）',
+      '＊實際匯率以友邦收訖款項當日為準；金額不包括保費徵費。'
+    ];
+    const t = lines.join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(() => toast('已複製'), () => fallbackCopy(t));
+    } else fallbackCopy(t);
+  }
+  function fallbackCopy(t){
+    const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('已複製'); } catch (e) { toast('複製失敗，請手動選取'); }
+    ta.remove();
+  }
+
+  async function exportXlsx(){
+    if (!window.ExcelJS) { toast('Excel 工具尚未載入，請檢查網絡後再試'); return; }
+    const p = $('pol').value, a = amount(), P = info(p);
+    if (!a) { toast('請先輸入金額'); return; }
+    const NAVY = 'FF1F3A5F', GOLD = 'FFFBF0CC', GOLDL = 'FFC9A227', ZEBRA = 'FFF4F7FB', GREY = 'FF6B7B8C';
+    const fill = c => ({type:'pattern', pattern:'solid', fgColor:{argb:c}});
+    const FONT = 'Microsoft JhengHei';
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('貨幣對照', {views:[{showGridLines:false}],
+      pageSetup:{paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:1, horizontalCentered:true}});
+    ws.columns = [{width:3},{width:7},{width:24},{width:10},{width:26},{width:20},{width:3}];
+    ws.getRow(1).height = 8;
+
+    ws.mergeCells('B2:F2');
+    let c = ws.getCell('B2'); c.value = '保費繳付貨幣對照表';
+    c.font = {name:FONT, size:20, bold:true, color:{argb:'FFFFFFFF'}}; c.fill = fill(NAVY);
+    c.alignment = {horizontal:'center', vertical:'middle'}; ws.getRow(2).height = 42;
+    ws.mergeCells('B3:F3');
+    c = ws.getCell('B3'); c.value = '匯率日期：' + S.date + '　｜　資料來源：友邦香港公佈匯率' + (S.source === '手動' ? '（手動輸入）' : '');
+    c.font = {name:FONT, size:10, color:{argb:'FFE6ECF4'}}; c.fill = fill(NAVY);
+    c.alignment = {horizontal:'center', vertical:'middle'}; ws.getRow(3).height = 22;
+    ws.getRow(4).height = 10;
+
+    ws.mergeCells('B5:F5');
+    c = ws.getCell('B5'); c.value = '保單貨幣金額';
+    c.font = {name:FONT, size:10, color:{argb:'FF7A6A3A'}}; c.fill = fill(GOLD);
+    c.alignment = {horizontal:'center', vertical:'bottom'}; ws.getRow(5).height = 20;
+    ws.mergeCells('B6:F6');
+    c = ws.getCell('B6'); c.value = P.f + '  ' + P.n + '  ' + money(p, a);
+    c.font = {name:FONT, size:22, bold:true, color:{argb:NAVY}}; c.fill = fill(GOLD);
+    c.alignment = {horizontal:'center', vertical:'middle'}; ws.getRow(6).height = 40;
+    c.border = {bottom:{style:'medium', color:{argb:GOLDL}}};
+    ws.getRow(7).height = 10;
+
+    const heads = ['', '繳付貨幣', '代號', '應繳金額', '匯率（1 單位兌港元）'];
+    heads.forEach((h, i) => {
+      const cell = ws.getRow(8).getCell(i + 2); cell.value = h;
+      cell.font = {name:FONT, size:11, bold:true, color:{argb:'FFFFFFFF'}}; cell.fill = fill(NAVY);
+      cell.alignment = {horizontal: i >= 3 ? 'right' : (i === 1 ? 'left' : 'center'), vertical:'middle'};
+    });
+    ws.getRow(8).height = 26;
+
+    let r = 9;
+    avail().forEach((x, k) => {
+      const row = ws.getRow(r), isPol = x.c === p;
+      const vals = [x.f, x.n + (isPol ? '（保單貨幣）' : ''), x.c, Math.round(conv(a, p, x.c) * 100) / 100, S.rates[x.c]];
+      vals.forEach((v, i) => {
+        const cell = row.getCell(i + 2); cell.value = v;
+        cell.font = {name:FONT, size: i === 0 ? 14 : (i === 3 ? 12 : 11), bold: isPol || i === 3, color:{argb: i === 4 ? GREY : 'FF1C2B3A'}};
+        cell.alignment = {horizontal: i >= 3 ? 'right' : (i === 1 ? 'left' : 'center'), vertical:'middle'};
+        cell.border = {bottom:{style:'thin', color:{argb:'FFDDE4EC'}}};
+        if (isPol) cell.fill = fill(GOLD); else if (k % 2 === 1) cell.fill = fill(ZEBRA);
+        if (i === 3) cell.numFmt = '"' + x.s + ' "#,##0.00';
+        if (i === 4) cell.numFmt = '0.0000';
+      });
+      row.height = 26; r++;
+    });
+
+    ws.getRow(r).height = 10; r++;
+    const notes = [
+      '備註',
+      '1. 以上金額按友邦香港於 ' + S.date + ' 公佈之匯率計算，僅供參考。',
+      '2. 實際匯率以友邦收訖款項當日之匯率為準，實際應繳金額或會有所不同。',
+      '3. 港元以外貨幣之間的金額，經港元匯率換算。',
+      '4. 以上金額並不包括保費徵費。'
+    ];
+    notes.forEach((t, i) => {
+      ws.mergeCells('B' + r + ':F' + r);
+      const cell = ws.getCell('B' + r); cell.value = t;
+      cell.font = {name:FONT, size:9, bold: i === 0, color:{argb:GREY}};
+      cell.alignment = {horizontal:'left', vertical:'middle', wrapText:true};
+      ws.getRow(r).height = 18; r++;
+    });
+    ws.pageSetup.printArea = 'A1:G' + r;
+
+    const buf = await wb.xlsx.writeBuffer();
+    const type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const name = '保費貨幣對照_' + p + '_' + Math.round(a) + '_' + S.date + '.xlsx';
+    const blob = new Blob([buf], {type:type});
+    try {
+      const file = new File([blob], name, {type:type});
+      if (navigator.canShare && navigator.canShare({files:[file]})) {
+        await navigator.share({files:[file]});
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('已下載 Excel');
+  }
+
+  $('pol').addEventListener('change', render);
+  $('pay').addEventListener('change', render);
+  $('amt').addEventListener('input', render);
+  $('amt').addEventListener('blur', () => { const a = amount(); if (a) $('amt').value = fmt(a, 2).replace(/\.00$/, ''); });
+  $('swap').addEventListener('click', () => { const p = $('pol').value; $('pol').value = $('pay').value; $('pay').value = p; render(); });
+  $('copy').addEventListener('click', copyText);
+  $('xlsx').addEventListener('click', () => exportXlsx().catch(e => toast('匯出失敗：' + e.message)));
+  $('tbl').addEventListener('click', e => { const tr = e.target.closest('tr'); if (tr) { $('pay').value = tr.dataset.c; render(); window.scrollTo({top:0, behavior:'smooth'}); } });
+  $('manual').addEventListener('input', e => {
+    const c = e.target.dataset.c, v = parseFloat(e.target.value);
+    if (c && v > 0) { S.rates[c] = v; S.source = '手動'; render(); }
+  });
+  $('reset').addEventListener('click', () => { load(); toast('已還原'); });
+  load();
   </script>
   </body>
   </html>
