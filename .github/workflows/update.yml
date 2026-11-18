@@ -33,6 +33,25 @@ jobs:
               b.close()
           '''
 
+          def hk_now():
+              return datetime.datetime.utcnow() + datetime.timedelta(hours=8)
+
+          def pick_date(a, b, y):
+              today = hk_now().date()
+              cands = []
+              for mm, dd in ((a, b), (b, a)):
+                  try:
+                      d = datetime.date(y, mm, dd)
+                  except ValueError:
+                      continue
+                  if d not in cands:
+                      cands.append(d)
+              if not cands:
+                  return None
+              if len(cands) > 1:
+                  print('日期有兩種讀法：', [str(d) for d in cands], '選最接近今天的一個')
+              return min(cands, key=lambda d: abs((d - today).days))
+
           def clean(text):
               text = re.sub(r'(?is)<(script|style)[^>]*>.*?</\1>', ' ', text)
               text = re.sub(r'<[^>]+>', ' ', text)
@@ -50,9 +69,9 @@ jobs:
               m = re.search(r'日期\s*[:：]\s*(\d{1,2})/(\d{1,2})/(\d{4})', seg)
               if not m:
                   return None
-              mm, dd, yy = int(m.group(1)), int(m.group(2)), m.group(3)
-              if mm > 12:
-                  mm, dd = dd, mm
+              d = pick_date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+              if not d:
+                  return None
               rates = {}
               for name, code in CUR.items():
                   r = re.search(re.escape(name) + r'\s*(\d+(?:\.\d+)?)', seg)
@@ -60,7 +79,7 @@ jobs:
                       rates[code] = float(r.group(1))
               if not (7 < rates.get('USD', 0) < 9) or len(rates) < 5:
                   return None
-              return {'date': '%s-%02d-%02d' % (yy, mm, dd), 'rates': rates}
+              return {'date': d.strftime('%Y-%m-%d'), 'rates': rates}
 
           def diag(label, raw):
               t = clean(raw)
@@ -113,8 +132,7 @@ jobs:
           if old.get('date') == data['date'] and old.get('rates') == data['rates']:
               print('匯率沒有變動：', data['date'])
           else:
-              hk = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
-              data['updated'] = hk.strftime('%Y-%m-%d %H:%M')
+              data['updated'] = hk_now().strftime('%Y-%m-%d %H:%M')
               json.dump(data, open('rates.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
               print('已更新：', data)
           EOF
