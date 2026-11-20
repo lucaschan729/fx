@@ -1,144 +1,155 @@
-name: 更新匯率
-on:
-  schedule:
-    - cron: '9,39 0-11 * * 1-6'
-  workflow_dispatch:
-permissions:
-  contents: write
-jobs:
-  update:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: 讀取友邦匯率
-        run: |
-          python3 - <<'EOF'
-          import json, re, sys, subprocess, urllib.request, html, datetime, os
-          URL = 'https://www.aia.com.hk/zh-hk/help-and-support/individuals/exchange-rates.html'
-          UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
-          CUR = {'美元':'USD','澳元':'AUD','人民幣':'CNY','加拿大元':'CAD','瑞士法郎':'CHF','英鎊':'GBP','披索':'PHP','澳門幣':'MOP','新台幣':'TWD','新加坡元':'SGD','紐西蘭元':'NZD','歐羅':'EUR','日圓':'JPY'}
-          BROWSER_CODE = r'''
-          import sys
-          from playwright.sync_api import sync_playwright
-          with sync_playwright() as p:
-              b = p.chromium.launch()
-              pg = b.new_page(user_agent=sys.argv[2], locale='zh-HK')
-              pg.goto(sys.argv[1], wait_until='domcontentloaded', timeout=60000)
-              try:
-                  pg.wait_for_selector('text=美元', timeout=30000)
-              except Exception:
-                  pass
-              pg.wait_for_timeout(5000)
-              sys.stdout.buffer.write(pg.inner_text('body').encode('utf-8'))
-              b.close()
-          '''
+  name: 更新匯率
+  on:
+    schedule:
+      # 後備排程：香港 08:09–19:39 每半小時（主要靠 cron-job.org 準時觸發）
+      - cron: '9,39 0-11 * * 1-6'
+    workflow_dispatch:
+  permissions:
+    contents: write
+  concurrency:
+    group: update-rates
+    cancel-in-progress: false
+  jobs:
+    update:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - name: 讀取友邦匯率
+          run: |
+            python3 - <<'EOF'
+            import json, re, sys, subprocess, urllib.request, html, datetime, os, time
+            URL = 'https://www.aia.com.hk/zh-hk/help-and-support/individuals/exchange-rates.html'
+            UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
+            CUR = {'美元':'USD','澳元':'AUD','人民幣':'CNY','加拿大元':'CAD','瑞士法郎':'CHF','英鎊':'GBP','披索':'PHP','澳門幣':'MOP','新台幣':'TWD','新加坡元':'SGD','紐西蘭元':'NZD','歐羅':'EUR','日圓':'JPY'}
+            BROWSER_CODE = r'''
+            import sys
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as p:
+                b = p.chromium.launch()
+                pg = b.new_page(user_agent=sys.argv[2], locale='zh-HK')
+                pg.goto(sys.argv[1], wait_until='domcontentloaded', timeout=60000)
+                try:
+                    pg.wait_for_selector('text=美元', timeout=30000)
+                except Exception:
+                    pass
+                pg.wait_for_timeout(5000)
+                sys.stdout.buffer.write(pg.inner_text('body').encode('utf-8'))
+                b.close()
+            '''
 
-          def hk_now():
-              return datetime.datetime.utcnow() + datetime.timedelta(hours=8)
+            def hk_now():
+                return datetime.datetime.utcnow() + datetime.timedelta(hours=8)
 
-          def pick_date(a, b, y):
-              today = hk_now().date()
-              cands = []
-              for mm, dd in ((a, b), (b, a)):
-                  try:
-                      d = datetime.date(y, mm, dd)
-                  except ValueError:
-                      continue
-                  if d not in cands:
-                      cands.append(d)
-              if not cands:
-                  return None
-              if len(cands) > 1:
-                  print('日期有兩種讀法：', [str(d) for d in cands], '選最接近今天的一個')
-              return min(cands, key=lambda d: abs((d - today).days))
+            def fresh_url():
+                # 每次加上不同參數，避免讀到快取的舊頁面
+                return URL + '?t=' + str(int(time.time()))
 
-          def clean(text):
-              text = re.sub(r'(?is)<(script|style)[^>]*>.*?</\1>', ' ', text)
-              text = re.sub(r'<[^>]+>', ' ', text)
-              return re.sub(r'\s+', ' ', html.unescape(text))
+            def pick_date(a, b, y):
+                today = hk_now().date()
+                cands = []
+                for mm, dd in ((a, b), (b, a)):
+                    try:
+                        d = datetime.date(y, mm, dd)
+                    except ValueError:
+                        continue
+                    if d not in cands:
+                        cands.append(d)
+                if not cands:
+                    return None
+                if len(cands) > 1:
+                    print('日期有兩種讀法：', [str(d) for d in cands], '選最接近今天的一個')
+                return min(cands, key=lambda d: abs((d - today).days))
 
-          def parse(raw):
-              text = clean(raw)
-              i = text.find('外幣與港元兌換價')
-              if i < 0:
-                  return None
-              seg = text[i:i + 3000]
-              j = seg.find('以上外幣匯率')
-              if j > 0:
-                  seg = seg[:j]
-              m = re.search(r'日期\s*[:：]\s*(\d{1,2})/(\d{1,2})/(\d{4})', seg)
-              if not m:
-                  return None
-              d = pick_date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
-              if not d:
-                  return None
-              rates = {}
-              for name, code in CUR.items():
-                  r = re.search(re.escape(name) + r'\s*(\d+(?:\.\d+)?)', seg)
-                  if r and float(r.group(1)) > 0:
-                      rates[code] = float(r.group(1))
-              if not (7 < rates.get('USD', 0) < 9) or len(rates) < 5:
-                  return None
-              return {'date': d.strftime('%Y-%m-%d'), 'rates': rates}
+            def clean(text):
+                text = re.sub(r'(?is)<(script|style)[^>]*>.*?</\1>', ' ', text)
+                text = re.sub(r'<[^>]+>', ' ', text)
+                return re.sub(r'\s+', ' ', html.unescape(text))
 
-          def diag(label, raw):
-              t = clean(raw)
-              for k in ('兌換價', '匯價', '美元'):
-                  i = t.find(k)
-                  if i >= 0:
-                      print('【%s】找到「%s」，附近文字：' % (label, k), t[max(0, i - 100):i + 500])
-                      return
-              print('【%s】頁面內沒有匯率文字。文字長度：' % label, len(t), '開頭：', t[:300])
+            def parse(raw):
+                text = clean(raw)
+                i = text.find('外幣與港元兌換價')
+                if i < 0:
+                    return None
+                seg = text[i:i + 3000]
+                j = seg.find('以上外幣匯率')
+                if j > 0:
+                    seg = seg[:j]
+                m = re.search(r'日期\s*[:：]\s*(\d{1,2})/(\d{1,2})/(\d{4})', seg)
+                if not m:
+                    return None
+                d = pick_date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                if not d:
+                    return None
+                rates = {}
+                for name, code in CUR.items():
+                    r = re.search(re.escape(name) + r'\s*(\d+(?:\.\d+)?)', seg)
+                    if r and float(r.group(1)) > 0:
+                        rates[code] = float(r.group(1))
+                if not (7 < rates.get('USD', 0) < 9) or len(rates) < 5:
+                    return None
+                return {'date': d.strftime('%Y-%m-%d'), 'rates': rates}
 
-          def plain():
-              req = urllib.request.Request(URL, headers={'User-Agent': UA, 'Accept-Language': 'zh-HK,zh;q=0.9'})
-              return urllib.request.urlopen(req, timeout=40).read().decode('utf-8', 'ignore')
+            def diag(label, raw):
+                t = clean(raw)
+                for k in ('兌換價', '匯價', '美元'):
+                    i = t.find(k)
+                    if i >= 0:
+                        print('【%s】找到「%s」，附近文字：' % (label, k), t[max(0, i - 100):i + 500])
+                        return
+                print('【%s】頁面內沒有匯率文字。文字長度：' % label, len(t), '開頭：', t[:300])
 
-          def browser():
-              subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'playwright'], check=True)
-              subprocess.run([sys.executable, '-m', 'playwright', 'install', '--with-deps', 'chromium'], check=True, stdout=subprocess.DEVNULL)
-              r = subprocess.run([sys.executable, '-c', BROWSER_CODE, URL, UA], capture_output=True, timeout=240)
-              if r.returncode != 0:
-                  raise RuntimeError(r.stderr.decode('utf-8', 'ignore')[-1500:])
-              return r.stdout.decode('utf-8', 'ignore')
+            def plain():
+                req = urllib.request.Request(fresh_url(), headers={
+                    'User-Agent': UA, 'Accept-Language': 'zh-HK,zh;q=0.9',
+                    'Cache-Control': 'no-cache', 'Pragma': 'no-cache'})
+                return urllib.request.urlopen(req, timeout=40).read().decode('utf-8', 'ignore')
 
-          data = None
-          try:
-              raw = plain()
-              data = parse(raw)
-              if not data:
-                  diag('直接讀取', raw)
-          except Exception as e:
-              print('直接讀取失敗：', e)
-          if not data:
-              print('改用瀏覽器方式讀取')
-              try:
-                  raw = browser()
-                  data = parse(raw)
-                  if not data:
-                      diag('瀏覽器讀取', raw)
-              except Exception as e:
-                  print('瀏覽器讀取失敗：', e)
-          if not data:
-              print('未能讀到匯率。')
-              sys.exit(1)
+            def browser():
+                subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'playwright'], check=True)
+                subprocess.run([sys.executable, '-m', 'playwright', 'install', '--with-deps', 'chromium'], check=True, stdout=subprocess.DEVNULL)
+                r = subprocess.run([sys.executable, '-c', BROWSER_CODE, fresh_url(), UA], capture_output=True, timeout=240)
+                if r.returncode != 0:
+                    raise RuntimeError(r.stderr.decode('utf-8', 'ignore')[-1500:])
+                return r.stdout.decode('utf-8', 'ignore')
 
-          old = {}
-          if os.path.exists('rates.json'):
-              try:
-                  old = json.load(open('rates.json', encoding='utf-8'))
-              except Exception:
-                  pass
-          if old.get('date') == data['date'] and old.get('rates') == data['rates']:
-              print('匯率沒有變動：', data['date'])
-          else:
-              data['updated'] = hk_now().strftime('%Y-%m-%d %H:%M')
-              json.dump(data, open('rates.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-              print('已更新：', data)
-          EOF
-      - name: 儲存
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add rates.json
-          git diff --cached --quiet || (git commit -m "更新匯率" && git push)
+            print('執行時間（香港）：', hk_now().strftime('%Y-%m-%d %H:%M'))
+            data = None
+            try:
+                raw = plain()
+                data = parse(raw)
+                if not data:
+                    diag('直接讀取', raw)
+            except Exception as e:
+                print('直接讀取失敗：', e)
+            if not data:
+                print('改用瀏覽器方式讀取')
+                try:
+                    raw = browser()
+                    data = parse(raw)
+                    if not data:
+                        diag('瀏覽器讀取', raw)
+                except Exception as e:
+                    print('瀏覽器讀取失敗：', e)
+            if not data:
+                print('未能讀到匯率。')
+                sys.exit(1)
+
+            old = {}
+            if os.path.exists('rates.json'):
+                try:
+                    old = json.load(open('rates.json', encoding='utf-8'))
+                except Exception:
+                    pass
+            if old.get('date') == data['date'] and old.get('rates') == data['rates']:
+                print('匯率沒有變動：', data['date'])
+            else:
+                data['updated'] = hk_now().strftime('%Y-%m-%d %H:%M')
+                json.dump(data, open('rates.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+                print('已更新：', data)
+            EOF
+        - name: 儲存
+          run: |
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+            git add rates.json
+            git diff --cached --quiet || (git commit -m "更新匯率" && git push)
