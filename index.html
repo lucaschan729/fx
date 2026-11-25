@@ -3,50 +3,124 @@
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#16304f">
   <title>AIA 保費匯率計算器</title>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
   <style>
-  *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang HK","Microsoft JhengHei",sans-serif;background:#f2f5f9;color:#1c2b3a;line-height:1.5}
-  header{background:linear-gradient(135deg,#1f3a5f,#2f5d8f);color:#fff;padding:22px 16px 18px;text-align:center}
-  header h1{margin:0;font-size:22px;letter-spacing:1px}
-  #status{margin-top:6px;font-size:13px;opacity:.9}
-  main{max-width:640px;margin:0 auto;padding:14px}
-  .card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(31,58,95,.08)}
-  .warn{background:#fff4d6;border:1px solid #e6b422;color:#7a5600;border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:14px;display:none}
-  label{display:block;font-size:13px;color:#5b6b7c;margin-bottom:4px}
-  select,input{width:100%;font-size:17px;padding:11px 12px;border:1px solid #cfd8e3;border-radius:10px;background:#fff;color:#1c2b3a}
-  .swap{display:flex;justify-content:center;margin:8px 0}
-  .swap button{width:44px;height:44px;border-radius:50%;border:none;background:#1f3a5f;color:#fff;font-size:20px}
-  .result{margin-top:14px;background:#fbf3dc;border:1px solid #e6c766;border-radius:14px;padding:14px;text-align:center}
-  .result .small{font-size:13px;color:#7a6a3a}
-  .result .big{font-size:28px;font-weight:700;color:#1f3a5f;margin:4px 0;word-break:break-all}
-  .btns{display:flex;gap:10px;margin-top:12px}
-  .btns button{flex:1;padding:13px 8px;font-size:15px;border:none;border-radius:12px;font-weight:600}
-  .b1{background:#1f3a5f;color:#fff}
-  .b2{background:#c9a227;color:#fff}
-  h2{font-size:16px;margin:0 0 10px;color:#1f3a5f}
+  :root{--navy:#16304f;--navy2:#2a5688;--gold:#c9a227;--goldl:#f3dc8f;--cream:#fbf5e1;--ink:#1c2b3a;--mute:#6b7b8c;--line:#e6ecf3;--bg:#eef2f7}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang HK","Microsoft JhengHei","Noto Sans TC",sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+  header{background:linear-gradient(140deg,#0f2440 0%,var(--navy) 45%,var(--navy2) 100%);color:#fff;padding:30px 16px 64px;text-align:center;position:relative;overflow:hidden}
+  header::before{content:"";position:absolute;right:-70px;top:-70px;width:220px;height:220px;border-radius:50%;border:34px solid rgba(201,162,39,.16)}
+  header::after{content:"";position:absolute;left:-50px;bottom:-90px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.05)}
+  .eyebrow{font-size:11px;letter-spacing:4px;color:var(--goldl);text-transform:uppercase;margin-bottom:6px;position:relative}
+  header h1{margin:0;font-size:24px;letter-spacing:2px;font-weight:700;position:relative}
+  #status{display:inline-block;margin-top:12px;font-size:12px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.2);padding:5px 14px;border-radius:99px;position:relative}
+  main{max-width:640px;margin:-42px auto 0;padding:0 14px 30px;position:relative}
+  .card{background:#fff;border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:0 6px 24px rgba(22,48,79,.08)}
+  .warn{background:#fff4d6;border:1px solid #e6b422;color:#7a5600;border-radius:14px;padding:11px 14px;margin-bottom:14px;font-size:14px;display:none;box-shadow:0 6px 24px rgba(22,48,79,.08)}
+  label{display:block;font-size:12px;font-weight:600;letter-spacing:.5px;color:var(--mute);margin-bottom:6px}
+  select,input{width:100%;font-size:17px;font-family:inherit;padding:13px 14px;border:1.5px solid #d5dde8;border-radius:12px;background:#f9fbfd;color:var(--ink);outline:none;transition:border-color .2s,box-shadow .2s,background .2s}
+  select{appearance:none;-webkit-appearance:none;padding-right:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2316304f' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+  select:focus,input:focus{border-color:var(--navy2);background-color:#fff;box-shadow:0 0 0 4px rgba(42,86,136,.12)}
+  .swap{display:flex;align-items:center;gap:12px;margin:12px 0 6px}
+  .swap::before,.swap::after{content:"";flex:1;height:1px;background:var(--line)}
+  .swap button{width:42px;height:42px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;font-size:19px;box-shadow:0 4px 10px rgba(22,48,79,.25);transition:transform .25s}
+  .swap button:active{transform:rotate(180deg) scale(.92)}
+  .amt{position:relative;margin-top:0}
+  .amt span{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:700;color:var(--navy2);font-size:15px;pointer-events:none}
+  .amt input{font-size:22px;font-weight:700;padding-left:68px;letter-spacing:.5px}
+  .result{margin-top:16px;background:linear-gradient(140deg,#0f2440,var(--navy) 55%,var(--navy2));border-radius:18px;padding:18px 14px 16px;text-align:center;color:#fff;position:relative;overflow:hidden}
+  .result::before{content:"";position:absolute;left:0;top:0;right:0;height:4px;background:linear-gradient(90deg,var(--gold),var(--goldl),var(--gold))}
+  .result .small{font-size:13px;color:rgba(255,255,255,.78)}
+  .result .big{font-size:32px;font-weight:800;color:var(--goldl);margin:6px 0;word-break:break-all;letter-spacing:.5px}
+  .result #rRate{display:inline-block;background:rgba(255,255,255,.1);border-radius:99px;padding:3px 12px;font-size:12px}
+  .btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+  .btns button{padding:13px 4px;font-size:14px;border-radius:13px;font-weight:700;border:none;transition:transform .12s,opacity .2s}
+  .btns button:active{transform:scale(.96)}
+  .btns button:disabled{opacity:.6}
+  .b0{background:#fff;color:var(--navy);border:1.5px solid var(--navy)!important}
+  .b1{background:linear-gradient(135deg,#b88f17,var(--gold));color:#fff;box-shadow:0 4px 12px rgba(201,162,39,.35)}
+  .b2{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;box-shadow:0 4px 12px rgba(22,48,79,.25)}
+  h2{font-size:16px;margin:0 0 10px;color:var(--navy);display:flex;align-items:center;gap:8px}
+  h2::before{content:"";width:4px;height:17px;border-radius:2px;background:var(--gold)}
   table{width:100%;border-collapse:collapse;font-size:15px}
-  td{padding:10px 6px;border-bottom:1px solid #edf1f6}
-  td.f{font-size:24px;width:40px;text-align:center}
-  td.a{text-align:right;font-weight:600;white-space:nowrap}
-  td .code{font-size:12px;color:#7b8a9a}
-  tr.sel{background:#fbf3dc}
+  #tbl tr{cursor:pointer;transition:background .15s}
+  #tbl tr:active{background:#f1f5fa}
+  #tbl td{padding:11px 6px;border-bottom:1px solid var(--line)}
+  #tbl tr:last-child td{border-bottom:none}
+  td.f{font-size:24px;width:44px;text-align:center}
+  td.a{text-align:right;font-weight:700;white-space:nowrap;color:var(--navy)}
+  td .code{font-size:11px;color:#8a98a8;letter-spacing:1px}
+  tr.sel{background:var(--cream)}
+  tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--gold)}
   tr.pol{color:#9aa7b5}
-  tr.pol td.a{font-weight:400}
-  details summary{font-weight:600;color:#1f3a5f;cursor:pointer}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-  .grid input{font-size:15px;padding:8px 10px}
-  .link{background:none;border:none;color:#2f5d8f;font-size:14px;margin-top:10px;padding:0;text-decoration:underline}
-  .note{font-size:12px;color:#6b7b8c}
+  tr.pol td.a{font-weight:400;color:#9aa7b5}
+  .tag{display:inline-block;font-size:10px;background:#e8eef6;color:var(--navy2);border-radius:99px;padding:1px 8px;margin-left:6px;vertical-align:middle;font-weight:600}
+  details summary{font-weight:700;color:var(--navy);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  details summary::-webkit-details-marker{display:none}
+  details summary::after{content:"＋";color:var(--gold);font-size:18px}
+  details[open] summary::after{content:"－"}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .grid input{font-size:15px;padding:9px 11px}
+  .link{background:none;border:none;color:var(--navy2);font-size:14px;margin-top:12px;padding:0;text-decoration:underline}
+  .note{font-size:12px;color:var(--mute)}
   .note li{margin-bottom:4px}
-  #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#1c2b3a;color:#fff;padding:10px 18px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none}
+  #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:rgba(22,35,52,.95);color:#fff;padding:11px 20px;border-radius:99px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+
+  /* ===== PDF 範本（畫面外渲染，A4 794×1123px） ===== */
+  #pdfWrap{position:absolute;left:-10000px;top:0;width:794px}
+  #pdfPage{width:794px;min-height:1123px;background:#fff;color:#1c2b3a;display:flex;flex-direction:column;font-family:"PingFang HK","Microsoft JhengHei","Noto Sans TC","Heiti TC",sans-serif;line-height:1.4}
+  .p-head{background:#16304f;color:#fff;padding:32px 46px 26px;display:flex;justify-content:space-between;align-items:flex-end}
+  .p-eyebrow{font-size:11px;letter-spacing:4px;color:#f3dc8f}
+  .p-title{font-size:31px;font-weight:700;letter-spacing:3px;margin-top:6px}
+  .p-date{text-align:right;border-left:3px solid #c9a227;padding-left:16px}
+  .p-date small{display:block;font-size:11px;color:#b9c7d8;letter-spacing:1px}
+  .p-date b{display:block;font-size:20px;letter-spacing:1px;margin-top:2px}
+  .p-gold{height:6px;background:#c9a227}
+  .p-body{padding:24px 46px 0;flex:1}
+  .p-hero{display:flex;border:1.5px solid #e6c766;border-radius:14px;overflow:hidden}
+  .p-hero>div{flex:1;padding:16px 22px 18px}
+  .p-hero .l{background:#fbf5e1}
+  .p-hero .r{background:#16304f;color:#fff}
+  .p-lab{font-size:12px;letter-spacing:1px;color:#8a7430}
+  .p-hero .r .p-lab{color:#f3dc8f}
+  .p-cur{font-size:14px;margin-top:8px;font-weight:700}
+  .p-amt{font-size:28px;font-weight:800;margin-top:2px;white-space:nowrap}
+  .p-amt.sm{font-size:21px}
+  .p-hero .l .p-amt{color:#16304f}
+  .p-hero .r .p-amt{color:#f3dc8f}
+  .p-rate{font-size:12px;color:#6b7b8c;margin:9px 2px 0;text-align:right}
+  .p-sec{font-size:15px;font-weight:700;color:#16304f;margin:14px 0 8px;border-left:5px solid #c9a227;padding-left:10px}
+  .p-tbl{width:100%;border-collapse:collapse;font-size:14px}
+  .p-tbl th{background:#16304f;color:#fff;font-size:12px;font-weight:700;height:32px;padding:0 12px;text-align:left;letter-spacing:1px}
+  .p-tbl td{height:36px;padding:0 12px;border-bottom:1px solid #e3e9f0}
+  .p-tbl tr.z td{background:#f5f8fb}
+  .p-tbl tr.s td{background:#fbf0c8;font-weight:700}
+  .p-tbl tr.p td{color:#8492a2}
+  .p-tbl .r{text-align:right}
+  .p-tbl td.m{font-weight:700;font-size:15px;color:#16304f}
+  .p-tbl tr.p td.m{color:#8492a2;font-weight:400}
+  .p-badge{display:inline-block;width:46px;height:22px;line-height:22px;text-align:center;background:#16304f;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;border-radius:5px}
+  .p-tbl tr.s .p-badge{background:#c9a227}
+  .p-tbl tr.p .p-badge{background:#9aa7b5}
+  .p-chip{display:inline-block;font-size:10px;border-radius:99px;padding:1px 8px;margin-left:8px;font-weight:700}
+  .p-chip.g{background:#c9a227;color:#fff}
+  .p-chip.n{background:#dfe6ee;color:#55657a}
+  .p-notes{margin-top:14px;background:#f5f8fb;border-radius:10px;padding:12px 18px;font-size:11.5px;color:#55657a}
+  .p-notes b{display:block;color:#16304f;font-size:12.5px;margin-bottom:4px}
+  .p-notes div{margin-bottom:2px}
+  .p-foot{margin:14px 46px 0;padding:10px 0 20px;border-top:1px solid #d5dde8;display:flex;justify-content:space-between;font-size:10.5px;color:#8a98a8}
   </style>
   </head>
   <body>
   <header>
+    <div class="eyebrow">Premium FX Calculator</div>
     <h1>AIA 保費匯率計算器</h1>
-    <div id="status">載入匯率中…</div>
+    <div><div id="status">載入匯率中…</div></div>
   </header>
   <main>
     <div class="warn" id="warn"></div>
@@ -56,16 +130,17 @@
       <div class="swap"><button id="swap" aria-label="對調">⇅</button></div>
       <label>繳付貨幣</label>
       <select id="pay"></select>
-      <label style="margin-top:12px">保費金額</label>
-      <input id="amt" type="text" inputmode="decimal" value="10,000">
+      <label style="margin-top:14px">保費金額</label>
+      <div class="amt"><span id="sym">US$</span><input id="amt" type="text" inputmode="decimal" value="10,000"></div>
       <div class="result">
         <div class="small" id="rTop"></div>
         <div class="big" id="rBig"></div>
         <div class="small" id="rRate"></div>
       </div>
       <div class="btns">
-        <button class="b1" id="copy">複製結果</button>
-        <button class="b2" id="xlsx">匯出 Excel 給客戶</button>
+        <button class="b0" id="copy">📋 複製</button>
+        <button class="b1" id="pdf">📄 匯出 PDF</button>
+        <button class="b2" id="xlsx">📊 匯出 Excel</button>
       </div>
     </div>
     <div class="card">
@@ -89,6 +164,7 @@
       </ul>
     </div>
   </main>
+  <div id="pdfWrap"><div id="pdfPage"></div></div>
   <div id="toast"></div>
   <script>
   const CUR = [
@@ -115,7 +191,8 @@
   const fmt = (n, d) => n.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
   const money = (c, n) => info(c).s + ' ' + fmt(n, 2);
   const conv = (a, p, q) => a * S.rates[p] / S.rates[q];
-  const hkToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const hkNow = () => new Date(Date.now() + 8 * 3600e3).toISOString();
+  const hkToday = () => hkNow().slice(0, 10);
   const amount = () => { const v = parseFloat($('amt').value.replace(/,/g, '')); return v > 0 ? v : 0; };
 
   function toast(t){ const e = $('toast'); e.textContent = t; e.style.opacity = 1; setTimeout(() => e.style.opacity = 0, 2200); }
@@ -156,12 +233,13 @@
     else if (S.date !== hkToday()) msgs.push('⚠️ 匯率日期（' + S.date + '）不是今天，友邦可能尚未公佈今天匯率，或自動更新未完成。');
     w.style.display = msgs.length ? 'block' : 'none'; w.textContent = msgs.join(' ');
     const P = info(p), Q = info(q), out = conv(a, p, q);
+    $('sym').textContent = P.s;
     $('rTop').textContent = P.f + ' ' + P.n + ' ' + money(p, a) + ' 　→　 ' + Q.f + ' ' + Q.n;
     $('rBig').textContent = money(q, out);
     $('rRate').textContent = '1 ' + P.n + ' = ' + fmt(conv(1, p, q), 4) + ' ' + Q.n + (p !== 'HKD' && q !== 'HKD' && p !== q ? '（交叉計算，僅供參考）' : '');
     $('tbl').innerHTML = avail().map(x =>
       '<tr data-c="' + x.c + '" class="' + (x.c === q ? 'sel' : '') + (x.c === p ? ' pol' : '') + '"><td class="f">' + x.f + '</td><td>' + x.n +
-      (x.c === p ? '（保單貨幣）' : '') + '<div class="code">' + x.c + '</div></td><td class="a">' + money(x.c, conv(a, p, x.c)) + '</td></tr>').join('');
+      (x.c === p ? '<span class="tag">保單貨幣</span>' : '') + '<div class="code">' + x.c + '</div></td><td class="a">' + money(x.c, conv(a, p, x.c)) + '</td></tr>').join('');
   }
 
   function copyText(){
@@ -184,6 +262,83 @@
     ta.remove();
   }
 
+  /* 分享（手機）或下載（電腦） */
+  async function deliver(blob, name, type, label){
+    try {
+      const file = new File([blob], name, {type:type});
+      if (navigator.canShare && navigator.canShare({files:[file]})) {
+        await navigator.share({files:[file]});
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast('已下載 ' + label);
+  }
+
+  /* ===== PDF 匯出 ===== */
+  function buildPdfHtml(){
+    const p = $('pol').value, q = $('pay').value, a = amount(), P = info(p), Q = info(q);
+    const manual = S.source === '手動';
+    const polAmt = money(p, a), payAmt = money(q, conv(a, p, q));
+    const sm = t => t.length > 18 ? ' sm' : '';
+    const rows = avail().map((x, k) => {
+      const cls = x.c === q && x.c !== p ? 's' : (x.c === p ? 'p' : (k % 2 ? 'z' : ''));
+      const chip = x.c === p ? '<span class="p-chip n">保單貨幣</span>' : (x.c === q ? '<span class="p-chip g">所選繳付貨幣</span>' : '');
+      return '<tr class="' + cls + '"><td style="width:70px"><span class="p-badge">' + x.c + '</span></td><td>' + x.n + chip +
+        '</td><td class="r">' + fmt(S.rates[x.c], 4) + '</td><td class="r m">' + money(x.c, conv(a, p, x.c)) + '</td></tr>';
+    }).join('');
+    const right = p === q ? '' :
+      '<div class="r"><div class="p-lab">以所選貨幣繳付・應繳金額（約）</div><div class="p-cur">' + Q.n + ' ' + Q.c +
+      '</div><div class="p-amt' + sm(payAmt) + '">' + payAmt + '</div></div>';
+    const rateLine = p === q ? '' :
+      '<div class="p-rate">參考匯率：1 ' + P.n + ' = ' + fmt(conv(1, p, q), 4) + ' ' + Q.n +
+      (p !== 'HKD' && q !== 'HKD' ? '（經港元交叉計算）' : '') + '</div>';
+    return '' +
+      '<div class="p-head"><div><div class="p-eyebrow">PREMIUM PAYMENT CURRENCY REFERENCE</div><div class="p-title">保費繳付貨幣對照表</div></div>' +
+      '<div class="p-date"><small>匯率日期</small><b>' + S.date + '</b><small>' + (manual ? '手動輸入匯率' : '友邦香港公佈匯率') + '</small></div></div>' +
+      '<div class="p-gold"></div>' +
+      '<div class="p-body">' +
+        '<div class="p-hero"><div class="l"><div class="p-lab">保單貨幣金額</div><div class="p-cur">' + P.n + ' ' + P.c +
+        '</div><div class="p-amt' + sm(polAmt) + '">' + polAmt + '</div></div>' + right + '</div>' + rateLine +
+        '<div class="p-sec">各繳付貨幣應繳金額</div>' +
+        '<table class="p-tbl"><tr><th>代號</th><th>繳付貨幣</th><th class="r">匯率（1 單位兌港元）</th><th class="r">應繳金額</th></tr>' + rows + '</table>' +
+        '<div class="p-notes"><b>備註</b>' +
+          '<div>1. 以上金額按' + (manual ? '手動輸入之匯率（日期 ' + S.date + '）' : '友邦香港於 ' + S.date + ' 公佈之匯率') + '計算，僅供參考。</div>' +
+          '<div>2. 實際匯率以友邦收訖款項當日之匯率為準，實際應繳金額或會有所不同。</div>' +
+          '<div>3. 港元以外貨幣之間的金額，經港元匯率換算。</div>' +
+          '<div>4. 以上金額並不包括保費徵費。</div></div>' +
+      '</div>' +
+      '<div class="p-foot"><span>此文件僅供參考，並不構成任何要約或保證。</span><span>製表時間：' + hkNow().slice(0, 16).replace('T', ' ') + '（香港時間）</span></div>';
+  }
+
+  async function exportPdf(){
+    if (!window.html2canvas || !window.jspdf) { toast('PDF 工具尚未載入，請檢查網絡後再試'); return; }
+    const p = $('pol').value, a = amount();
+    if (!a) { toast('請先輸入金額'); return; }
+    const btn = $('pdf'), old = btn.textContent;
+    btn.disabled = true; btn.textContent = '生成中…';
+    try {
+      const page = $('pdfPage');
+      page.innerHTML = buildPdfHtml();
+      const canvas = await html2canvas(page, {scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:794});
+      const pdf = new window.jspdf.jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
+      const ratio = canvas.height / canvas.width;
+      let w = 210, h = 210 * ratio;
+      if (h > 297) { h = 297; w = 297 / ratio; }
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', (210 - w) / 2, 0, w, h);
+      const name = '保費貨幣對照_' + p + '_' + Math.round(a) + '_' + S.date + '.pdf';
+      page.innerHTML = '';
+      await deliver(pdf.output('blob'), name, 'application/pdf', 'PDF');
+    } finally {
+      btn.disabled = false; btn.textContent = old;
+    }
+  }
+
+  /* ===== Excel 匯出 ===== */
   async function exportXlsx(){
     if (!window.ExcelJS) { toast('Excel 工具尚未載入，請檢查網絡後再試'); return; }
     const p = $('pol').value, a = amount(), P = info(p);
@@ -262,20 +417,7 @@
     const buf = await wb.xlsx.writeBuffer();
     const type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     const name = '保費貨幣對照_' + p + '_' + Math.round(a) + '_' + S.date + '.xlsx';
-    const blob = new Blob([buf], {type:type});
-    try {
-      const file = new File([blob], name, {type:type});
-      if (navigator.canShare && navigator.canShare({files:[file]})) {
-        await navigator.share({files:[file]});
-        return;
-      }
-    } catch (e) {
-      if (e && e.name === 'AbortError') return;
-    }
-    const url = URL.createObjectURL(blob), link = document.createElement('a');
-    link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toast('已下載 Excel');
+    await deliver(new Blob([buf], {type:type}), name, type, 'Excel');
   }
 
   $('pol').addEventListener('change', render);
@@ -284,6 +426,7 @@
   $('amt').addEventListener('blur', () => { const a = amount(); if (a) $('amt').value = fmt(a, 2).replace(/\.00$/, ''); });
   $('swap').addEventListener('click', () => { const p = $('pol').value; $('pol').value = $('pay').value; $('pay').value = p; render(); });
   $('copy').addEventListener('click', copyText);
+  $('pdf').addEventListener('click', () => exportPdf().catch(e => toast('匯出失敗：' + e.message)));
   $('xlsx').addEventListener('click', () => exportXlsx().catch(e => toast('匯出失敗：' + e.message)));
   $('tbl').addEventListener('click', e => { const tr = e.target.closest('tr'); if (tr) { $('pay').value = tr.dataset.c; render(); window.scrollTo({top:0, behavior:'smooth'}); } });
   $('manual').addEventListener('input', e => {
